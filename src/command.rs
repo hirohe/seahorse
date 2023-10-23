@@ -16,6 +16,8 @@ pub struct Command {
     /// Command alias
     pub alias: Option<Vec<String>>,
     pub commands: Option<Vec<Command>>,
+    pub pre_action: Option<Action>,
+    pub post_action: Option<Action>,
 }
 
 impl Command {
@@ -62,6 +64,16 @@ impl Command {
     /// ```
     pub fn usage<T: Into<String>>(mut self, usage: T) -> Self {
         self.usage = Some(usage.into());
+        self
+    }
+
+    pub fn pre_action(mut self, pre_action: Action) -> Self {
+        self.pre_action = Some(pre_action);
+        self
+    }
+
+    pub fn post_action(mut self, post_action: Action) -> Self {
+        self.post_action = Some(post_action);
         self
     }
 
@@ -202,6 +214,16 @@ impl Command {
         })
     }
 
+    fn run_action(&self, ctx: &Context, action: Action) {
+        if let Some(pre_action) = &self.pre_action {
+            pre_action(ctx);
+        }
+        action(ctx);
+        if let Some(post_action) = &self.post_action {
+            post_action(ctx);
+        }
+    }
+
     /// Run command
     /// Call this function only from `App`
     pub fn run(&self, args: Vec<String>) {
@@ -217,11 +239,14 @@ impl Command {
                             self.help();
                             return;
                         }
-                        action(&Context::new(
-                            args.to_vec(),
-                            self.flags.clone(),
-                            self.help_text(),
-                        ));
+                        self.run_action(
+                            &Context::new(
+                                args.to_vec(),
+                                self.flags.clone(),
+                                self.help_text(),
+                            ),
+                            action
+                        );
                     }
                     None => self.help(),
                 },
@@ -232,11 +257,14 @@ impl Command {
                         self.help();
                         return;
                     }
-                    action(&Context::new(
-                        args.to_vec(),
-                        self.flags.clone(),
-                        self.help_text(),
-                    ));
+                    self.run_action(
+                        &Context::new(
+                            args.to_vec(),
+                            self.flags.clone(),
+                            self.help_text(),
+                        ),
+                        action
+                    );
                 }
                 None => self.help(),
             },

@@ -19,6 +19,9 @@ pub struct App {
     pub action: Option<Action>,
     /// Application flags
     pub flags: Option<Vec<Flag>>,
+    /// PreAction
+    pub pre_action: Option<Action>,
+    pub post_action: Option<Action>,
 }
 
 impl App {
@@ -147,6 +150,26 @@ impl App {
         self
     }
 
+    pub fn pre_action(mut self, pre_action: Action) -> Self {
+        self.pre_action = Some(pre_action);
+        self
+    }
+
+    pub fn post_action(mut self, post_action: Action) -> Self {
+        self.post_action = Some(post_action);
+        self
+    }
+
+    fn run_action(&self, ctx: &Context, action: Action) {
+        if let Some(pre_action) = &self.pre_action {
+            pre_action(ctx);
+        }
+        action(ctx);
+        if let Some(post_action) = &self.post_action {
+            post_action(ctx);
+        }
+    }
+
     /// Set action of the app
     ///
     /// Example
@@ -218,11 +241,11 @@ impl App {
                         self.help();
                         return;
                     }
-                    action(&Context::new(
+                    self.run_action(&Context::new(
                         args[1..].to_vec(),
                         self.flags.clone(),
                         self.help_text(),
-                    ));
+                    ), action);
                 }
                 None => self.help(),
             },
